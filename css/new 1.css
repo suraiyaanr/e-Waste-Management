@@ -1,0 +1,29 @@
+body {
+    margin:0px;
+    padding:0px;
+    text-align:center;
+  background: #000;
+  }
+
+  canvas{
+    height:100vh;
+    outline:0;
+    border:1px solid #000;
+    position: absolute;
+    margin: auto;
+    right:0;
+    left:0;
+    bottom:0;
+    top:0;
+  }
+#restart{
+  width:100px;
+  height:40px;
+  visibility:hidden;
+  position:fixed;
+  margin:auto;
+  bottom:0;
+  top:0;
+  left:0;
+  right:0;
+}

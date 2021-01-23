@@ -1,0 +1,458 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+    <script>
+function start(){
+var width = 500, 
+    height = 500,
+    gLoop,
+    points = 0,
+    state = true,
+
+canvas = document.getElementById('canvas'), 
+ctx = canvas.getContext('2d');
+
+canvas.width = width;
+canvas.height = height;
+
+   document.getElementById("restart").style.visibility ="hidden";
+
+var clear = function(){
+  ctx.fillStyle = '#8BB';
+  ctx.clearRect(0, 0, width, height);
+  ctx.beginPath();
+  ctx.rect(0, 0, width, height);
+  ctx.closePath();
+  ctx.fill();
+}
+
+var howManyCircles = 10, circles = [];
+
+  for (var i = 0; i < howManyCircles; i++) 
+  circles.push([Math.random() * width, Math.random() * height, Math.random() * 100, Math.random() / 2]);
+
+
+var DrawCircles = function(){
+  for (var i = 0; i < howManyCircles; i++) {
+    ctx.fillStyle = 'rgba(255, 255, 255, ' + circles[i][3] + ')';
+    ctx.beginPath();
+    ctx.arc(circles[i][0], circles[i][1], circles[i][2], 0, Math.PI * 2, true);
+    ctx.closePath();
+    ctx.fill();
+  }
+};
+
+var MoveCircles = function(deltaY){
+  for (var i = 0; i < howManyCircles; i++) {
+    if (circles[i][1] - circles[i][2] > height) {
+      circles[i][0] = Math.random() * width;
+      circles[i][2] = Math.random() * 100;
+      circles[i][1] = 0 - circles[i][2];
+      circles[i][3] = Math.random() / 2;
+    } else {
+      circles[i][1] += deltaY;
+    }
+  }
+};
+
+
+var player = new (function(){
+    this.image = new Image();
+    this.image.src = "recycling-symbol-icon-solid-dark-green.png";
+    this.isJumping = false;
+    this.isFalling = false;
+    this.jumpSpeed = 0;
+    this.fallSpeed = 0;
+    this.width = 100;
+    this.height = 100;
+    this.X = 0;
+    this.Y = 0;
+    this.setPosition = function(x, y){
+      this.X = x;
+      this.Y = y;
+      } 
+    this.frames = 1;
+    this.actualFrame = 0;
+    this.interval = 0;
+this.jump = function() {
+      if (!this.isJumping && !this.isFalling) {
+        this.fallSpeed = 0;
+        this.isJumping = true;
+        this.jumpSpeed = 17;
+  }
+}
+this.checkJump = function() {
+    if (this.Y > height*0.4) {
+        this.setPosition(this.X, this.Y - this.jumpSpeed);        
+    } else {
+        if (this.jumpSpeed > 10) points++
+        MoveCircles(this.jumpSpeed * 0.5);
+        platforms.forEach(function(platform, ind){
+            platform.y += player.jumpSpeed;
+            if (platform.y > height) {
+                var type = ~~(Math.random() * 5);
+                if (type == 0) 
+                    type = 1;
+                else 
+                    type = 0;
+                platforms[ind] = new Platform(Math.random() * (width - platformWidth), platform.y - height, type);
+            }
+        });
+    }
+    this.jumpSpeed--;
+    if (this.jumpSpeed == 0) {
+        this.isJumping = false;
+        this.isFalling = true;
+        this.fallSpeed = 1;
+    }
+}
+
+this.checkFall = function(){
+    if (this.Y < height - this.height) {
+        this.setPosition(this.X, this.Y + this.fallSpeed);
+        this.fallSpeed++;
+    } else {
+        if (points == 0) 
+            this.fallStop();
+        else 
+            GameOver();
+    }
+}
+
+this.fallStop = function(){
+    this.isFalling = false;
+    this.fallSpeed = 0;
+    this.jump();    
+  }
+this.moveLeft = function(s){
+    this.setPosition(this.X - s, this.Y);
+  if (this.X < -65) {
+    this.X = width;
+  }
+}
+this.moveRight = function(s){
+    this.setPosition(this.X + s, this.Y);
+  if (this.X  > width) {
+    this.X = -this.width;
+  }
+}
+    this.draw = function(){
+          ctx.drawImage(this.image, 0, 0 ,1350, 1500, this.X, this.Y, this.width, this.height);
+    }
+  
+})();
+
+var Platform = function(x, y, type){
+    this.firstColor = '#FF8';
+    this.secondColor = '#EEEE00';
+    this.onCollide = function(){
+       player.fallStop();
+     };
+    if (type === 1) {
+      this.firstColor = '#F00';
+      this.secondColor = '#FB8';
+      this.onCollide = function(){
+        player.fallStop();
+        player.jumpSpeed = 50;
+      };
+}
+    this.isMoving = (Math.random() * 2);
+    this.direction= (Math.random() * 2) ? -1 : 1;
+    this.x = x;
+    this.y = y;
+    this.type = type;
+
+    this.draw = function(){
+ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+var gradient = ctx.createRadialGradient(this.x + (platformWidth/2), this.y + (platformHeight/2), 5, this.x + (platformWidth/2), this.y + (platformHeight/2), 45);
+gradient.addColorStop(0, this.firstColor);
+gradient.addColorStop(1, this.secondColor);
+ctx.fillStyle = gradient;
+ctx.fillRect(this.x, this.y, platformWidth, platformHeight);
+  };
+
+  return this;
+};
+
+var nrOfPlatforms = 7, 
+  platforms = [],
+  platformWidth = 70,
+  platformHeight = 20;
+var generatePlatforms = function(){
+    var position = 0, type;
+    for (var i = 0; i < nrOfPlatforms; i++) {
+        type = (Math.random()*5);
+        if (type == 0) 
+          type = 1;
+        else 
+          type = 0;
+        platforms[i] = new Platform(Math.random()*(width-platformWidth),position,type);
+        if (position < height - platformHeight) 
+            position += (height / nrOfPlatforms);
+}
+}();
+
+var checkCollision = function(){
+    platforms.forEach(function(e, ind){
+    if ((player.isFalling) && (player.X < e.x + platformWidth) && (player.X + player.width > e.x) && (player.Y + player.height > e.y) && (player.Y + player.height < e.y + platformHeight)
+) {
+        e.onCollide();
+}})}
+
+
+var GameOver = function(){
+    state = false;
+    clearTimeout(gLoop);
+    setTimeout(function(){
+            document.getElementById("restart").style.visibility ="visible";
+        clear(); 
+        ctx.fillStyle = "Black";
+        ctx.font = "10pt Arial";
+        ctx.fillText("GAME OVER", width / 2 -50, height / 2 - 50);
+        ctx.fillText("YOUR RESULT:" + points, width / 2 - 60, height / 2 - 30);
+    }, 100);
+ 
+};
+
+
+
+player.setPosition(((width-player.width)/2), (height - player.height));
+player.jump();
+
+document.onmousemove = function(e){
+if (player.X + canvas.offsetLeft > e.pageX) {
+player.moveLeft(20);
+} else if (player.X + canvas.offsetLeft < e.pageX) {
+player.moveRight(20);
+}}
+
+
+
+var GameLoop = function(){
+    clear();
+    state = true;
+    DrawCircles();
+    if (player.isJumping) player.checkJump();
+    if (player.isFalling) player.checkFall();
+    player.draw();
+    platforms.forEach(function(platform, index){
+        if (platform.isMoving) {
+            if (platform.x < 0) {
+                platform.direction = 1;
+            } else if (platform.x > width - platformWidth) {
+                platform.direction = -1;
+            }
+            platform.x += platform.direction * (index / 2) * ~~(points / 100);
+        }
+        platform.draw();
+    });
+    checkCollision();
+    player.draw();
+    ctx.fillStyle = "Black";
+    ctx.font = "15pt Arial";
+    ctx.fillText("POINTS:" + points, 10, height-10);
+  if (state)
+        gLoop = setTimeout(GameLoop, 1000 / 50);
+}
+GameLoop();
+
+controller = {
+  left:false,
+  right:false,
+  keyListener:function(event) {
+    var press = (event.type == "keydown")?true:false;
+    switch(event.keyCode) {
+      case 37:// left key
+        controller.left = press;
+      break;
+      case 39:// right key
+        controller.right = press;
+       break;
+}}};
+        
+setInterval(function(){
+  if (controller.left) {
+    player.moveLeft(2.5);
+  }
+  else if (controller.right) {
+    player.moveRight(2.5);
+  
+}},1)
+window.addEventListener("keydown",controller.keyListener)
+window.addEventListener("keyup",controller.keyListener);
+}
+</script>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>E-WASTE MANAGEMEN</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="" />
+	<meta name="keywords" content="" />
+	<meta name="author" content="" />
+
+  <!-- Facebook and Twitter integration -->
+	<meta property="og:title" content=""/>
+	<meta property="og:image" content=""/>
+	<meta property="og:url" content=""/>
+	<meta property="og:site_name" content=""/>
+	<meta property="og:description" content=""/>
+	<meta name="twitter:title" content="" />
+	<meta name="twitter:image" content="" />
+	<meta name="twitter:url" content="" />
+	<meta name="twitter:card" content="" />
+
+	<!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
+	<link rel="shortcut icon" href="favicon.ico">
+
+	<link href="https://fonts.googleapis.com/css?family=Quicksand:300,400,500,700" rel="stylesheet">
+	
+	<!-- Animate.css -->
+	<link rel="stylesheet" href="css/animate.css">
+	<!-- Icomoon Icon Fonts-->
+	<link rel="stylesheet" href="css/icomoon.css">
+	<!-- Bootstrap  -->
+	<link rel="stylesheet" href="css/bootstrap.css">
+	<!-- Flexslider  -->
+	<link rel="stylesheet" href="css/flexslider.css">
+	<!-- Flaticons  -->
+	<link rel="stylesheet" href="fonts/flaticon/font/flaticon.css">
+	<!-- Owl Carousel -->
+	<link rel="stylesheet" href="css/owl.carousel.min.css">
+	<link rel="stylesheet" href="css/owl.theme.default.min.css">
+	<!-- Theme style  -->
+	<link rel="stylesheet" href="css/style.css">
+
+	<!-- Modernizr JS -->
+	<script src="js/modernizr-2.6.2.min.js"></script>
+	<!-- FOR IE9 below -->
+	<!--[if lt IE 9]>
+	<script src="js/respond.min.js"></script>
+	<![endif]-->
+
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+ .zoom:hover {
+    cursor: pointer;
+    height:auto;
+    width: auto;
+    transform:scale(1.15);
+    -ms-transform:scale(1.15); /* IE 9 */
+    -moz-transform:scale(1.15); /* Firefox */
+    -webkit-transform:scale(1.15); /* Safari and Chrome */
+    -o-transform:scale(1.15); /* Opera */
+    box-shadow: 3px 3px 1px #111111;
+}
+.zoom {
+    position: relative;
+    width: auto;
+    height: auto;
+	transition: transform .5s ease;
+}
+.zoom img {
+    display: block;
+}
+.zoom .cornerLink {
+    opacity: 0;
+    position: absolute;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+    padding: 2px 0px;
+    color: #ffffff;
+    background: #000000;
+    text-decoration: none;
+    text-align: center;
+    -webkit-transition: opacity 500ms;
+    -moz-transition: opacity 500ms;
+    -o-transition: opacity 500ms;
+    transition: opacity 500ms;
+
+}
+.zoom:hover .cornerLink {
+    opacity: 0.8;
+	 z-index:10;
+}
+</style>
+
+	</head>
+	<body>
+	<div id="colorlib-page">
+		<a href="#" class="js-colorlib-nav-toggle colorlib-nav-toggle"><i></i></a>
+		<aside id="colorlib-aside" role="complementary" class="border js-fullheight">
+			<h1 id="colorlib-logo"><a href="index.html"><font color="#0aff8d">E-WASTE MANAGEMENT</font></a></h1>
+			<nav id="colorlib-main-menu" role="navigation">
+				<ul>
+                	<li><a href="index.html">Home</a></li>
+					<li><a href="info.html">Information</a></li>
+                    <li><a href="news.html">News</a></li>
+                    <div class="dropdown">
+  						<li><a href="gallery.html">Gallery</a></li>
+ 							 <div class="dropdown-content">
+   							 <li><a href="#environments"><font color="#666666">ENVIRONMENTS</font></a></li>
+     						 <li><a href="#animal"><font color="#666666">ANIMALS</font></a></li>
+                             <li><a href="#ways"><font color="#666666">WAYS TO OVERCOME</font></a></li>
+                             </div>
+                    </div>
+					<li><a href="about.html">About</a></li>
+					<li><a href="contact.html">Contact</a></li>
+                    <li  class="colorlib-active"><a href="game .html">EXtra</a></li>
+				</ul>
+			</nav>
+
+			<div class="colorlib-footer">
+				<p><small>&copy; SAS SINCE 2019</small></p>
+				<!--<ul>
+					<li><a href="#"><i class="icon-facebook2"></i></a></li>
+					<li><a href="#"><i class="icon-twitter2"></i></a></li>
+					<li><a href="#"><i class="icon-instagram"></i></a></li>
+					<li><a href="#"><i class="icon-linkedin2"></i></a></li>
+				</ul>-->
+			</div>
+
+		</aside>
+		<div id="colorlib-main">
+			<div class="colorlib-work">
+				<div class="colorlib-narrow-content">
+           <div class="row row-bottom-padded-md">
+			<div class="colorlib-about">
+				<div class="colorlib-narrow-content">
+					<div class="row row-bottom-padded-md">
+							<body onLoad="start()">
+ 							 <center>
+   									 <canvas id='canvas'></canvas>
+									<br>
+   										 <button id="restart" onMouseDown="start()">RESTART</button>
+							</center>
+  							</body>
+  					</div>
+  				</div>
+  			</div>
+          </div>
+
+	<!-- jQuery -->
+	<script src="js/jquery.min.js"></script>
+	<!-- jQuery Easing -->
+	<script src="js/jquery.easing.1.3.js"></script>
+	<!-- Bootstrap -->
+	<script src="js/bootstrap.min.js"></script>
+	<!-- Waypoints -->
+	<script src="js/jquery.waypoints.min.js"></script>
+	<!-- Flexslider -->
+	<script src="js/jquery.flexslider-min.js"></script>
+	<!-- Sticky Kit -->
+	<script src="js/sticky-kit.min.js"></script>
+	<!-- Owl carousel -->
+	<script src="js/owl.carousel.min.js"></script>
+	<!-- Counters -->
+	<script src="js/jquery.countTo.js"></script>
+	
+	
+	<!-- MAIN JS -->
+	<script src="js/main.js"></script>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>
+
